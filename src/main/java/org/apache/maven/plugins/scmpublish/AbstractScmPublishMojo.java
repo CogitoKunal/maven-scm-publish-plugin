@@ -66,13 +66,10 @@ import org.apache.maven.shared.utils.logging.MessageUtils;
 public abstract class AbstractScmPublishMojo extends AbstractMojo {
     // CHECKSTYLE_OFF: LineLength
     /**
-     * URL of the target SCM repository to publish to in format
-     * {@code scm:<scm_provider><delimiter><provider_specific_part>}.
-     * <p>
+     * Location of the scm publication tree:
+     * <code>scm:&lt;scm_provider&gt;&lt;delimiter&gt;&lt;provider_specific_part&gt;</code>.
      * Example:
-     * {@code scm:svn:https://svn.apache.org/repos/infra/websites/production/maven/content/plugins/maven-scm-publish-plugin-LATEST/}
-     *
-     * @see <a href="https://maven.apache.org/scm/scm-url-format.html">SCM URL Format</a>
+     * <code>scm:svn:https://svn.apache.org/repos/infra/websites/production/maven/content/plugins/maven-scm-publish-plugin-LATEST/</code>
      */
     // CHECKSTYLE_ON: LineLength
     @Parameter(
@@ -82,15 +79,15 @@ public abstract class AbstractScmPublishMojo extends AbstractMojo {
     protected String pubScmUrl;
 
     /**
-     * If the {@link AbstractScmPublishMojo#checkoutDirectory} exists and this flag is activated, the plugin will try an SCM-update instead
-     * of deleting first and then doing a fresh checkout.
+     * If the checkout directory exists and this flag is activated, the plugin will try an SCM-update instead
+     * of delete then checkout.
      */
     @Parameter(property = "scmpublish.tryUpdate", defaultValue = "false")
     protected boolean tryUpdate;
 
     // CHECKSTYLE_OFF: LineLength
     /**
-     * Filesystem path of the directory to where the scm check-out is done. By default, scm checkout is done in build (target) directory,
+     * Location where the scm check-out is done. By default, scm checkout is done in build (target) directory,
      * which is deleted on every <code>mvn clean</code>. To avoid this and get better performance, configure
      * this location outside build structure and set <code>tryUpdate</code> to <code>true</code>.
      * See <a href="http://maven.apache.org/plugins/maven-scm-publish-plugin/various-tips.html#Improving_SCM_Checkout_Performance">
@@ -110,13 +107,13 @@ public abstract class AbstractScmPublishMojo extends AbstractMojo {
     protected String subDirectory;
 
     /**
-     * If set to {@true} displays list of added, deleted, and changed files, but does not do any actual SCM operations.
+     * Display list of added, deleted, and changed files, but do not do any actual SCM operations.
      */
     @Parameter(property = "scmpublish.dryRun")
     private boolean dryRun;
 
     /**
-     * Set this to {@code true} to skip site deployment.
+     * Set this to 'true' to skip site deployment.
      *
      * @deprecated Please use {@link #skipDeployment}.
      */
@@ -125,13 +122,13 @@ public abstract class AbstractScmPublishMojo extends AbstractMojo {
     private boolean skipDeployement;
 
     /**
-     * Set this to {@code true} to skip site deployment.
+     * Set this to 'true' to skip site deployment.
      */
     @Parameter(property = "scmpublish.skipDeploy", alias = "maven.site.deploy.skip", defaultValue = "false")
     private boolean skipDeployment;
 
     /**
-     * Only executes local SCM add and delete commands, but leave the actual checkin for the user to run manually.
+     * Run add and delete commands, but leave the actually checkin for the user to run manually.
      */
     @Parameter(property = "scmpublish.skipCheckin")
     private boolean skipCheckin;
@@ -141,6 +138,18 @@ public abstract class AbstractScmPublishMojo extends AbstractMojo {
      */
     @Parameter(property = "scmpublish.checkinComment", defaultValue = "Site checkin for project ${project.name}")
     private String checkinComment;
+
+    /**
+     * Patterns to exclude from the scm tree.
+     */
+    @Parameter
+    protected String excludes;
+
+    /**
+     * Patterns to include in the scm tree.
+     */
+    @Parameter
+    protected String includes;
 
     /**
      * List of SCM provider implementations.
@@ -203,7 +212,7 @@ public abstract class AbstractScmPublishMojo extends AbstractMojo {
     protected String siteOutputEncoding;
 
     /**
-     * If set to {@code true} does not delete files in the SCM that are not in the site.
+     * Do not delete files to the scm
      */
     @Parameter(property = "scmpublish.skipDeletedFiles", defaultValue = "false")
     protected boolean skipDeletedFiles;
@@ -226,25 +235,14 @@ public abstract class AbstractScmPublishMojo extends AbstractMojo {
     protected Settings settings;
 
     /**
-     * Collections of path patterns specifying files/directories which should never be deleted by this goal.
-     * Each pattern is either
-     * <ul>
-     * <li>an Ant pattern (when surrounded by {@code %ant[} and {@code ]} or not starting with {@code %regex[}), or</li>
-     * <li>a full regex pattern when surrounded by  {@code %regex[} and {@code ]}.</li>
-     * </ul>
-     * Files/directories with a matching path will be skipped when deleting files from the SCM.
-     * <p>
-     * If your site has subdirectories or individual files published by an other mechanism/build you should leverage this parameter.
-     * @see <a href="http://ant.apache.org/manual/dirtasks.html#patterns">Ant Patterns</a>
-     * @see org.codehaus.plexus.util.MatchPatterns
-     * @see #skipDeletedFiles
+     * Collections of paths not to delete when checking content to delete.
+     * If your site has subdirectories published by an other mechanism/build
      */
     @Parameter
     protected String[] ignorePathsToDelete;
 
     /**
-     * SCM branch to use. For using with <a href="https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-from-a-branch">GitHub Pages</a>,
-     * you conventionally use <code>gh-pages</code>.
+     * SCM branch to use. For github, you must configure with <code>gh-pages</code>.
      */
     @Parameter(property = "scmpublish.scm.branch")
     protected String scmBranch;
@@ -256,14 +254,13 @@ public abstract class AbstractScmPublishMojo extends AbstractMojo {
     protected boolean automaticRemotePathCreation;
 
     /**
-     * File name extensions of files where line ending normalization should be applied.
-     * @see #extraNormalizeExtensions
+     * Filename extensions of files which need new line normalization.
      */
     private static final String[] NORMALIZE_EXTENSIONS = {"html", "css", "js"};
 
     /**
-     * Additional file name extensions of files where line ending normalization should be applied (will be added to the default list containing
-     * <code>html</code>,<code>css</code> and <code>js</code>)
+     * Extra file extensions to normalize line ending (will be added to default
+     * <code>html</code>,<code>css</code>,<code>js</code> list)
      */
     @Parameter
     protected String[] extraNormalizeExtensions;
@@ -381,8 +378,7 @@ public abstract class AbstractScmPublishMojo extends AbstractMojo {
         }
 
         try {
-            // only the baseDir is evaluated during update/checkout
-            ScmFileSet fileSet = new ScmFileSet(checkoutDirectory, null, null);
+            ScmFileSet fileSet = new ScmFileSet(checkoutDirectory, includes, excludes);
 
             ScmBranch branch = (scmBranch == null) ? null : new ScmBranch(scmBranch);
 

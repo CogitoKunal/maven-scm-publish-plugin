@@ -48,20 +48,20 @@ import org.apache.maven.shared.utils.logging.MessageUtils;
 import org.codehaus.plexus.util.MatchPatterns;
 
 /**
- * Publish content to an SCM (source code management) repository (like Git). By default, content is taken from default site staging directory
+ * Publish a content to scm. By default, content is taken from default site staging directory
  * <code>${project.build.directory}/staging</code>.
- * Can also be used without a Maven project, so usable to update any SCM with any content.
- * @see <a href="https://maven.apache.org/scm/index.html">Maven SCM</a>
+ * Can be used without project, so usable to update any SCM with any content.
  */
 @Mojo(name = "publish-scm", aggregator = true, requiresProject = false)
 public class ScmPublishPublishScmMojo extends AbstractScmPublishMojo {
     /**
-     * The path of the directory containing the content to be published.
-     * The is published recursively (i.e. including subdirectories).
+     * The content to be published.
      */
     @Parameter(property = "scmpublish.content", defaultValue = "${project.build.directory}/staging")
     private File content;
 
+    /**
+     */
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     protected MavenProject project;
 
